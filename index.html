@@ -218,14 +218,62 @@ body{
   background:#333;border-radius:2px;
 }
 
+/* ===== 跑步动画 ===== */
+@keyframes legL-run{
+  0%  {transform:rotate(-30deg);top:46px;}
+  50% {transform:rotate(25deg); top:50px;}
+  100%{transform:rotate(-30deg);top:46px;}
+}
+@keyframes legR-run{
+  0%  {transform:rotate(25deg); top:50px;}
+  50% {transform:rotate(-30deg);top:46px;}
+  100%{transform:rotate(25deg); top:50px;}
+}
+@keyframes armL-run{
+  0%  {transform:rotate(30deg);}
+  50% {transform:rotate(-20deg);}
+  100%{transform:rotate(30deg);}
+}
+@keyframes armR-run{
+  0%  {transform:rotate(-20deg);}
+  50% {transform:rotate(30deg);}
+  100%{transform:rotate(-20deg);}
+}
+@keyframes torso-run{
+  0%  {transform:translateX(-50%) rotate(-3deg);}
+  50% {transform:translateX(-50%) rotate(3deg);}
+  100%{transform:translateX(-50%) rotate(-3deg);}
+}
+.running .p-leg-l { animation:legL-run .38s linear infinite; }
+.running .p-leg-r { animation:legR-run .38s linear infinite; }
+.running .p-arm-l { animation:armL-run .38s linear infinite; }
+.running .p-arm-r { animation:armR-run .38s linear infinite; }
+.running .p-torso  { animation:torso-run .38s linear infinite; }
+
 /* 射门动画 */
 @keyframes kick{
   0%{transform:rotate(0deg);}
-  40%{transform:rotate(-50deg);}
-  70%{transform:rotate(20deg);}
+  40%{transform:rotate(-55deg);}
+  70%{transform:rotate(25deg);}
   100%{transform:rotate(0deg);}
 }
-.kicking .p-leg-r{ animation:kick .3s ease-out; }
+.kicking .p-leg-r{ animation:kick .35s ease-out; }
+
+/* 点击目标光标 */
+.click-marker{
+  position:absolute;
+  width:28px;height:28px;
+  border:3px solid #ffd700;
+  border-radius:50%;
+  pointer-events:none;
+  z-index:15;
+  transform:translate(-50%,-50%);
+  animation:markerFade .6s ease-out forwards;
+}
+@keyframes markerFade{
+  0%  {opacity:1;transform:translate(-50%,-50%) scale(1);}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(2);}
+}
 
 /* ===== 足球 ===== */
 #ball{
@@ -475,6 +523,7 @@ body{
 ===================================================== */
 const FIELD_W = 700, FIELD_H = 520;
 const BALL_TRAVEL = FIELD_W * 0.75;   // 规则5：3/4 场长
+const WALK_SPEED  = 280;              // 像素/秒
 
 const player   = document.getElementById('player');
 const ball     = document.getElementById('ball');
@@ -483,40 +532,61 @@ const statusTip= document.getElementById('statusTip');
 const goalFx   = document.getElementById('goalFx');
 const goalCount= document.getElementById('goalCount');
 const shotCount= document.getElementById('shotCount');
+const fieldEl  = document.getElementById('field');
+const playerBody = () => player.querySelector('.player-body');
 
-// 球员位置（鼠标实际在 field 内的坐标，以中心为基准）
-let px = FIELD_W * 0.65, py = FIELD_H * 0.55;  // 初始在场地右半部分
-let bx = px, by = py;    // 球跟随脚下
+// 球员当前位置
+let px = FIELD_W * 0.65, py = FIELD_H * 0.55;
+
+// 移动目标
+let targetX = px, targetY = py;
+let isWalking = false;
+let walkAnim  = null;
+let lastTime  = null;
 
 // 状态机
 const STATE = {READY:'ready', FLYING:'flying', RESET:'reset'};
 let state = STATE.READY;
-let shooting = false;
 let goalCnt = 0, shotCnt = 0;
 let resetTimer = null;
 let ballAnim = null;
 
-// 球门区域（SVG 绘制在 left:17 top:50%-55px，100×110）
-const GOAL_LEFT  = 17;
-const GOAL_TOP   = (FIELD_H - 110) / 2;
-const GOAL_RIGHT = GOAL_LEFT + 100;
-const GOAL_BOTTOM= GOAL_TOP  + 100; // 门框高度100
+// 球门区域（SVG：left:17, top:50%-55px, 100×100门框）
+const GOAL_LEFT   = 17;
+const GOAL_TOP    = (FIELD_H - 110) / 2;
+const GOAL_RIGHT  = GOAL_LEFT + 100;
+const GOAL_BOTTOM = GOAL_TOP  + 100;
 
 /* =====================================================
    初始化
 ===================================================== */
 function startGame(){
   document.getElementById('startMask').style.display = 'none';
-  updatePositions();
-  showTip('移动鼠标，对准球门后点击 射门键！');
+  syncBallToFeet();
+  renderPlayer();
+  shootBtn.classList.remove('hidden');
+  showTip('点击球场地板移动角色，到达后点击 射门键 射门！');
 }
 
 /* =====================================================
-   鼠标移动 → 规则4：移动时球紧跟脚下
+   同步球到脚下（始终贴脚）
 ===================================================== */
-const fieldEl = document.getElementById('field');
+function syncBallToFeet(){
+  ball.style.left = px + 'px';
+  ball.style.top  = (py + 14) + 'px'; // 球在脚底稍下
+}
 
-document.addEventListener('mousemove', e => {
+function renderPlayer(){
+  player.style.left = px + 'px';
+  player.style.top  = py + 'px';
+}
+
+/* =====================================================
+   点击地板 → 设置行走目标（f1）
+===================================================== */
+fieldEl.addEventListener('click', e => {
+  // 如果点击的是射门按钮，不处理移动
+  if(e.target === shootBtn || shootBtn.contains(e.target)) return;
   if(state !== STATE.READY) return;
 
   const rect = fieldEl.getBoundingClientRect();
@@ -527,20 +597,72 @@ document.addEventListener('mousemove', e => {
   mx = Math.max(30, Math.min(FIELD_W - 30, mx));
   my = Math.max(30, Math.min(FIELD_H - 60, my));
 
-  px = mx; py = my;
-  bx = px; by = py + 12; // 球在脚下偏下一点
+  targetX = mx; targetY = my;
 
-  updatePositions();
+  // 生成目标点光标
+  spawnClickMarker(mx, my);
+
+  // 开始行走
+  startWalking();
 });
 
-function updatePositions(){
-  player.style.left = px + 'px';
-  player.style.top  = py + 'px';
-  ball.style.left   = bx + 'px';
-  ball.style.top    = by + 'px';
+/* =====================================================
+   行走动画循环（f2 球始终跟脚，f3 跑步动画）
+===================================================== */
+function startWalking(){
+  if(isWalking) return; // 已经在走，只更新目标即可
+  isWalking = true;
+  lastTime = null;
+  playerBody().classList.add('running');
+  walkAnim = requestAnimationFrame(walkStep);
+}
 
-  // 规则5：只要在场上就显示射门键
-  shootBtn.classList.remove('hidden');
+function stopWalking(){
+  isWalking = false;
+  playerBody().classList.remove('running');
+  if(walkAnim){ cancelAnimationFrame(walkAnim); walkAnim = null; }
+}
+
+function walkStep(now){
+  if(!lastTime){ lastTime = now; }
+  const dt = Math.min((now - lastTime) / 1000, 0.1); // 秒，最大0.1防跳帧
+  lastTime = now;
+
+  const dx = targetX - px;
+  const dy = targetY - py;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if(dist < 3){
+    // 到达目标
+    px = targetX; py = targetY;
+    stopWalking();
+    syncBallToFeet();
+    renderPlayer();
+    return;
+  }
+
+  // 按速度推进
+  const step = Math.min(WALK_SPEED * dt, dist);
+  px += (dx / dist) * step;
+  py += (dy / dist) * step;
+
+  // f2：球始终紧跟脚下
+  syncBallToFeet();
+  renderPlayer();
+
+  walkAnim = requestAnimationFrame(walkStep);
+}
+
+/* =====================================================
+   目标点光标特效
+===================================================== */
+function spawnClickMarker(x, y){
+  const m = document.createElement('div');
+  m.className = 'click-marker';
+  m.style.left = x + 'px';
+  m.style.top  = y + 'px';
+  fieldEl.appendChild(m);
+  setTimeout(()=> m.remove(), 650);
 }
 
 /* =====================================================
@@ -548,32 +670,34 @@ function updatePositions(){
 ===================================================== */
 function shoot(){
   if(state !== STATE.READY) return;
+  // 射门时停止行走
+  stopWalking();
 
   state = STATE.FLYING;
-  shooting = true;
   shootBtn.classList.add('hidden');
   shotCnt++;
   shotCount.textContent = shotCnt;
 
-  // 射门动画：腿踢
-  player.querySelector('.player-body').classList.add('kicking');
-  setTimeout(()=> player.querySelector('.player-body').classList.remove('kicking'), 350);
+  // 射门踢腿动画
+  const pb = playerBody();
+  pb.classList.remove('running');
+  pb.classList.add('kicking');
+  setTimeout(()=> pb.classList.remove('kicking'), 380);
 
-  // 计算球的飞行目标（从球位置向左 3/4 场距离方向射出）
-  // 方向：从球员位置指向球门中心
+  // 方向：球员 → 球门中心
   const goalCX = GOAL_LEFT + 50;
   const goalCY = FIELD_H / 2;
+  const bx = px, by = py + 14;
   const dx = goalCX - bx;
   const dy = goalCY - by;
   const dist = Math.sqrt(dx*dx + dy*dy);
   const ux = dx / dist, uy = dy / dist;
 
-  const targetX = bx + ux * BALL_TRAVEL;
-  const targetY = by + uy * BALL_TRAVEL;
+  const endX = bx + ux * BALL_TRAVEL;
+  const endY = by + uy * BALL_TRAVEL;
 
-  // 动画飞行
-  animateBall(bx, by, targetX, targetY, 800, () => {
-    checkGoal(targetX, targetY);
+  animateBall(bx, by, endX, endY, 800, () => {
+    checkGoal(endX, endY);
   });
 }
 
@@ -654,17 +778,13 @@ function resetBall(){
   if(ballAnim) cancelAnimationFrame(ballAnim);
 
   // 球重新贴回脚下
-  bx = px; by = py + 12;
-  const ballEl = document.getElementById('ball');
-  ballEl.style.left = bx + 'px';
-  ballEl.style.top  = by + 'px';
-  ballEl.querySelector('svg').style.transform = '';
+  syncBallToFeet();
+  ball.querySelector('svg').style.transform = '';
   rotation = 0;
 
   state = STATE.READY;
-  shooting = false;
   shootBtn.classList.remove('hidden');
-  showTip('移动鼠标，对准球门后点击 射门键！', 2500);
+  showTip('点击地板移动角色，靠近球门后点击 射门键！', 2800);
 }
 
 /* =====================================================
@@ -681,7 +801,7 @@ function showTip(msg, duration = 0){
 }
 
 /* =====================================================
-   键盘快捷键：空格键也可以射门
+   键盘快捷键：空格键 / F 键也可以射门
 ===================================================== */
 document.addEventListener('keydown', e=>{
   if(e.code === 'Space' || e.code === 'KeyF'){
