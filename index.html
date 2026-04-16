@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>蹴鞠大擂台 · 射门小游戏</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:#1a0a00;
+  font-family:"Microsoft YaHei","PingFang SC",sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;overflow:hidden;user-select:none;
+}
+
+/* ===== 游戏主容器 ===== */
+#gameWrap{
+  position:relative;
+  width:700px;height:520px;
+}
+
+/* ===== 绿茵球场 ===== */
+#field{
+  position:absolute;inset:0;
+  background:linear-gradient(180deg,#2d8a2d 0%,#38a838 50%,#2d8a2d 100%);
+  border-radius:4px;
+  overflow:hidden;
+}
+
+/* 球场条纹 */
+#field::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(
+    180deg,
+    rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 40px,
+    transparent 40px, transparent 80px
+  );
+}
+
+/* 球场边线 */
+.field-lines{
+  position:absolute;inset:20px;
+  border:3px solid rgba(255,255,255,0.85);
+  border-radius:2px;
+}
+
+/* 中线 */
+.center-line{
+  position:absolute;left:50%;top:20px;bottom:20px;
+  width:3px;background:rgba(255,255,255,0.85);
+  transform:translateX(-50%);
+}
+
+/* 中圆 */
+.center-circle{
+  position:absolute;
+  width:100px;height:100px;
+  border:3px solid rgba(255,255,255,0.85);
+  border-radius:50%;
+  left:50%;top:50%;
+  transform:translate(-50%,-50%);
+}
+
+/* 球门区（左侧） */
+.goal-box{
+  position:absolute;
+  width:80px;height:180px;
+  border:3px solid rgba(255,255,255,0.85);
+  left:20px;top:50%;
+  transform:translateY(-50%);
+  background:rgba(255,255,255,0.04);
+}
+
+/* 球门（左侧） */
+#goal{
+  position:absolute;
+  width:14px;height:100px;
+  left:17px;top:50%;
+  transform:translateY(-50%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:2;
+}
+.goal-post{
+  position:absolute;
+  background:#e8e8e8;
+  box-shadow:2px 0 6px rgba(0,0,0,0.5);
+}
+.goal-left-post{ width:8px;height:100px;left:0;top:0;border-radius:2px; }
+.goal-crossbar{ width:90px;height:8px;top:0;left:0;border-radius:2px; }
+.goal-right-post{ width:8px;height:100px;right:0;top:0;border-radius:2px;display:none; }
+/* 球门网 */
+.goal-net{
+  position:absolute;
+  left:8px;top:8px;
+  width:82px;height:92px;
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.15) 0,rgba(255,255,255,0.15) 1px, transparent 1px, transparent 12px),
+    repeating-linear-gradient(90deg,rgba(255,255,255,0.15) 0,rgba(255,255,255,0.15) 1px, transparent 1px, transparent 12px);
+}
+
+/* 重新绘制球门 — 等腰梯形俯视效果 */
+#goalSvg{
+  position:absolute;
+  left:17px;top:50%;transform:translateY(-50%);
+  z-index:2;pointer-events:none;
+}
+
+/* 角球弧 */
+.corner{
+  position:absolute;
+  width:24px;height:24px;
+  border:3px solid rgba(255,255,255,0.6);
+  border-radius:50%;
+}
+.corner.tl{top:12px;left:12px;clip-path:polygon(0 100%,100% 100%,100% 0);}
+.corner.bl{bottom:12px;left:12px;clip-path:polygon(0 0,100% 0,100% 100%);}
+.corner.tr{top:12px;right:12px;clip-path:polygon(0 0,0 100%,100% 100%);}
+.corner.br{bottom:12px;right:12px;clip-path:polygon(0 0,0 100%,100% 0);}
+
+/* ===== 玩家角色 ===== */
+#player{
+  position:absolute;
+  width:48px;height:60px;
+  z-index:10;
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+  transition:left .05s linear, top .05s linear;
+}
+
+/* 角色身体 CSS 绘制（梦幻西游风格小人）*/
+.player-body{
+  position:relative;width:100%;height:100%;
+}
+/* 头 */
+.p-head{
+  position:absolute;left:50%;top:0;transform:translateX(-50%);
+  width:22px;height:22px;border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,#fde8c8,#e8c090);
+  border:1.5px solid #c0905a;
+  box-shadow:0 2px 4px rgba(0,0,0,0.3);
+}
+/* 头发 */
+.p-head::before{
+  content:'';position:absolute;
+  top:-4px;left:2px;right:2px;height:10px;
+  background:linear-gradient(135deg,#2a1a00,#5a3a10);
+  border-radius:50% 50% 0 0;
+}
+/* 眼睛 */
+.p-head::after{
+  content:'• •';position:absolute;
+  top:8px;left:0;right:0;
+  text-align:center;font-size:7px;color:#222;
+  letter-spacing:2px;line-height:1;
+}
+/* 身体（球衣）*/
+.p-torso{
+  position:absolute;left:50%;top:20px;transform:translateX(-50%);
+  width:26px;height:20px;
+  background:linear-gradient(180deg,#f0a020,#e08010);
+  border-radius:3px 3px 0 0;
+  border:1.5px solid #c06000;
+}
+/* 球衣号码 */
+.p-torso::after{
+  content:'7';position:absolute;
+  top:3px;left:50%;transform:translateX(-50%);
+  font-size:9px;font-weight:bold;color:#fff;
+  text-shadow:0 1px 2px rgba(0,0,0,0.5);
+}
+/* 左臂 */
+.p-arm-l{
+  position:absolute;left:5px;top:22px;
+  width:8px;height:16px;
+  background:linear-gradient(180deg,#f0a020,#e08010);
+  border-radius:4px;border:1px solid #c06000;
+  transform:rotate(15deg);transform-origin:top center;
+}
+/* 右臂 */
+.p-arm-r{
+  position:absolute;right:5px;top:22px;
+  width:8px;height:16px;
+  background:linear-gradient(180deg,#f0a020,#e08010);
+  border-radius:4px;border:1px solid #c06000;
+  transform:rotate(-15deg);transform-origin:top center;
+}
+/* 短裤 */
+.p-shorts{
+  position:absolute;left:50%;top:38px;transform:translateX(-50%);
+  width:24px;height:12px;
+  background:linear-gradient(180deg,#1a3a8a,#1228668);
+  border-radius:2px;
+  background:#1a3a8a;
+}
+/* 左腿 */
+.p-leg-l{
+  position:absolute;left:8px;top:48px;
+  width:9px;height:14px;
+  background:linear-gradient(180deg,#f5d5a0,#e0b870);
+  border-radius:3px;
+}
+/* 右腿（射门姿势偶尔抬起）*/
+.p-leg-r{
+  position:absolute;right:8px;top:48px;
+  width:9px;height:14px;
+  background:linear-gradient(180deg,#f5d5a0,#e0b870);
+  border-radius:3px;
+}
+/* 鞋 */
+.p-shoe-l{
+  position:absolute;left:6px;top:60px;
+  width:12px;height:5px;
+  background:#333;border-radius:2px;
+}
+.p-shoe-r{
+  position:absolute;right:6px;top:60px;
+  width:12px;height:5px;
+  background:#333;border-radius:2px;
+}
+
+/* 射门动画 */
+@keyframes kick{
+  0%{transform:rotate(0deg);}
+  40%{transform:rotate(-50deg);}
+  70%{transform:rotate(20deg);}
+  100%{transform:rotate(0deg);}
+}
+.kicking .p-leg-r{ animation:kick .3s ease-out; }
+
+/* ===== 足球 ===== */
+#ball{
+  position:absolute;
+  width:22px;height:22px;
+  z-index:9;
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+  transition:none;
+}
+#ball svg{filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));}
+
+/* ===== 射门按钮 ===== */
+#shootBtn{
+  position:absolute;
+  left:50%;bottom:22px;
+  transform:translateX(-50%);
+  width:120px;height:42px;
+  background:linear-gradient(135deg,#00b4d8,#0077b6);
+  border:2px solid #48cae4;
+  border-radius:10px;
+  color:#fff;
+  font-size:18px;font-weight:bold;
+  letter-spacing:3px;
+  cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,180,216,.5);
+  z-index:20;
+  transition:all .15s;
+  font-family:inherit;
+  display:flex;align-items:center;justify-content:center;
+}
+#shootBtn:hover{
+  background:linear-gradient(135deg,#48cae4,#00b4d8);
+  box-shadow:0 6px 24px rgba(0,180,216,.7);
+  transform:translateX(-50%) translateY(-2px);
+}
+#shootBtn:active{transform:translateX(-50%) translateY(0);}
+#shootBtn.hidden{display:none;}
+
+/* ===== 倒计时 / 状态提示 ===== */
+#statusTip{
+  position:absolute;
+  left:50%;top:14px;
+  transform:translateX(-50%);
+  padding:6px 20px;
+  background:rgba(0,0,0,.55);
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:20px;
+  color:#ffe066;
+  font-size:14px;font-weight:bold;
+  letter-spacing:1px;
+  z-index:20;
+  white-space:nowrap;
+  transition:opacity .3s;
+}
+#statusTip.hide{opacity:0;pointer-events:none;}
+
+/* ===== 球飞行轨迹粒子 ===== */
+.trail{
+  position:absolute;
+  width:8px;height:8px;
+  background:rgba(255,220,50,.7);
+  border-radius:50%;
+  z-index:8;
+  pointer-events:none;
+  animation:fadeTrail .4s ease-out forwards;
+}
+@keyframes fadeTrail{to{opacity:0;transform:scale(0);}}
+
+/* ===== 进球特效 ===== */
+#goalFx{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  z-index:50;pointer-events:none;
+  opacity:0;transition:opacity .3s;
+}
+#goalFx.show{opacity:1;}
+.goal-text{
+  font-size:72px;font-weight:900;
+  color:#ffd700;
+  text-shadow:0 0 30px #ff9900, 0 0 60px #ff6600, 4px 4px 0 #8a5a00;
+  animation:goalPop .5s cubic-bezier(.36,.07,.19,.97);
+  letter-spacing:4px;
+}
+@keyframes goalPop{
+  0%{transform:scale(0) rotate(-15deg);}
+  60%{transform:scale(1.2) rotate(5deg);}
+  100%{transform:scale(1) rotate(0);}
+}
+
+/* ===== 顶部信息栏 ===== */
+#topBar{
+  width:700px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 16px;
+  background:linear-gradient(90deg,#1a0a00,#2a1500,#1a0a00);
+  border-bottom:2px solid #8a5a00;
+  border-radius:8px 8px 0 0;
+  margin-bottom:0;
+}
+.score-info{color:#ffd700;font-size:14px;font-weight:bold;letter-spacing:1px;}
+.score-info span{color:#fff;font-size:18px;}
+.hint-info{color:#c8a060;font-size:12px;}
+
+/* ===== 底部信息 ===== */
+#bottomBar{
+  width:700px;
+  padding:8px 16px 10px;
+  background:linear-gradient(90deg,#1a0a00,#2a1500,#1a0a00);
+  border-top:2px solid #8a5a00;
+  border-radius:0 0 8px 8px;
+  display:flex;align-items:center;justify-content:center;gap:20px;
+}
+.rule-tip{color:#a08050;font-size:12px;text-align:center;}
+.rule-tip b{color:#ffd700;}
+
+/* 遮罩提示 */
+#startMask{
+  position:absolute;inset:0;
+  background:rgba(0,0,0,.7);
+  z-index:80;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;
+}
+.mask-title{color:#ffd700;font-size:28px;font-weight:900;letter-spacing:4px;
+  text-shadow:0 0 20px rgba(255,215,0,.6);}
+.mask-sub{color:#c8a060;font-size:14px;letter-spacing:1px;}
+.start-btn{
+  margin-top:8px;
+  padding:12px 48px;
+  background:linear-gradient(135deg,#f0a020,#c06000);
+  border:2px solid #ffd700;border-radius:12px;
+  color:#fff;font-size:18px;font-weight:bold;cursor:pointer;
+  font-family:inherit;letter-spacing:2px;
+  box-shadow:0 4px 20px rgba(255,160,0,.5);
+  transition:all .15s;
+}
+.start-btn:hover{transform:scale(1.05);box-shadow:0 6px 28px rgba(255,160,0,.8);}
+</style>
+</head>
+<body>
+
+<!-- 顶部信息 -->
+<div id="topBar">
+  <div class="score-info">⚽ 进球数：<span id="goalCount">0</span></div>
+  <div class="score-info" style="font-size:13px;color:#c8a060">蹴鞠射门小游戏</div>
+  <div class="score-info">总射门：<span id="shotCount">0</span></div>
+</div>
+
+<!-- 游戏主容器 -->
+<div id="gameWrap">
+
+  <!-- 球场 -->
+  <div id="field">
+    <div class="field-lines"></div>
+    <div class="center-line"></div>
+    <div class="center-circle"></div>
+    <div class="goal-box"></div>
+    <div class="corner tl"></div>
+    <div class="corner bl"></div>
+    <div class="corner tr"></div>
+    <div class="corner br"></div>
+
+    <!-- 球门 SVG -->
+    <svg id="goalSvg" width="100" height="110" viewBox="0 0 100 110">
+      <!-- 横梁 -->
+      <rect x="0" y="0" width="100" height="9" rx="3" fill="#e0e0e0" filter="url(#shadow)"/>
+      <!-- 左门柱 -->
+      <rect x="0" y="0" width="9" height="100" rx="3" fill="#e0e0e0"/>
+      <!-- 右门柱 -->
+      <rect x="91" y="0" width="9" height="100" rx="3" fill="#e0e0e0"/>
+      <!-- 球网 横线 -->
+      <line x1="9" y1="22" x2="91" y2="22" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      <line x1="9" y1="38" x2="91" y2="38" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      <line x1="9" y1="54" x2="91" y2="54" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      <line x1="9" y1="70" x2="91" y2="70" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      <line x1="9" y1="86" x2="91" y2="86" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      <!-- 球网 竖线 -->
+      <line x1="25" y1="9" x2="25" y2="100" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      <line x1="41" y1="9" x2="41" y2="100" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      <line x1="57" y1="9" x2="57" y2="100" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      <line x1="73" y1="9" x2="73" y2="100" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+      <!-- 底线 -->
+      <rect x="0" y="100" width="100" height="9" rx="3" fill="#e0e0e0" opacity="0.5"/>
+      <defs>
+        <filter id="shadow"><feDropShadow dx="2" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.4)"/></filter>
+      </defs>
+    </svg>
+  </div>
+
+  <!-- 玩家 -->
+  <div id="player">
+    <div class="player-body">
+      <div class="p-head"></div>
+      <div class="p-torso"></div>
+      <div class="p-arm-l"></div>
+      <div class="p-arm-r"></div>
+      <div class="p-shorts"></div>
+      <div class="p-leg-l"></div>
+      <div class="p-leg-r"></div>
+      <div class="p-shoe-l"></div>
+      <div class="p-shoe-r"></div>
+    </div>
+  </div>
+
+  <!-- 足球 -->
+  <div id="ball">
+    <svg width="22" height="22" viewBox="0 0 22 22">
+      <circle cx="11" cy="11" r="10" fill="#fff" stroke="#222" stroke-width="1"/>
+      <path d="M11 1 L14 7 L11 8 L8 7 Z" fill="#222"/>
+      <path d="M20 7 L15 9 L14 7 L17 3 Z" fill="#222"/>
+      <path d="M20 15 L15 13 L15 9 L20 7 Z" fill="#222"/>
+      <path d="M14 21 L11 16 L15 13 L20 15 Z" fill="#222"/>
+      <path d="M8 21 L11 16 L11 8 L8 7 Z" fill="#222" opacity="0.8"/>
+      <path d="M2 15 L7 13 L11 16 L8 21 Z" fill="#222"/>
+      <path d="M2 7 L7 9 L7 13 L2 15 Z" fill="#222" opacity="0.8"/>
+      <path d="M5 3 L8 7 L7 9 L2 7 Z" fill="#222"/>
+    </svg>
+  </div>
+
+  <!-- 状态提示 -->
+  <div id="statusTip" class="hide"></div>
+
+  <!-- 射门按钮 -->
+  <button id="shootBtn" class="hidden" onclick="shoot()">射门键</button>
+
+  <!-- 进球特效 -->
+  <div id="goalFx"><div class="goal-text">GOAL!</div></div>
+
+  <!-- 开始遮罩 -->
+  <div id="startMask">
+    <div class="mask-title">⚽ 蹴鞠射门</div>
+    <div class="mask-sub">移动鼠标控制球员 · 点击射门键射球</div>
+    <button class="start-btn" onclick="startGame()">开始游戏</button>
+  </div>
+
+</div>
+
+<!-- 底部提示 -->
+<div id="bottomBar">
+  <div class="rule-tip">🖱️ <b>移动鼠标</b> 控制球员 &nbsp;|&nbsp; 🎯 <b>点击射门键</b> 将球射向球门方向 &nbsp;|&nbsp; ⏱️ 射门后 <b>5秒</b> 自动重置</div>
+</div>
+
+<script>
+/* =====================================================
+   游戏状态
+===================================================== */
+const FIELD_W = 700, FIELD_H = 520;
+const BALL_TRAVEL = FIELD_W * 0.75;   // 规则5：3/4 场长
+
+const player   = document.getElementById('player');
+const ball     = document.getElementById('ball');
+const shootBtn = document.getElementById('shootBtn');
+const statusTip= document.getElementById('statusTip');
+const goalFx   = document.getElementById('goalFx');
+const goalCount= document.getElementById('goalCount');
+const shotCount= document.getElementById('shotCount');
+
+// 球员位置（鼠标实际在 field 内的坐标，以中心为基准）
+let px = FIELD_W * 0.65, py = FIELD_H * 0.55;  // 初始在场地右半部分
+let bx = px, by = py;    // 球跟随脚下
+
+// 状态机
+const STATE = {READY:'ready', FLYING:'flying', RESET:'reset'};
+let state = STATE.READY;
+let shooting = false;
+let goalCnt = 0, shotCnt = 0;
+let resetTimer = null;
+let ballAnim = null;
+
+// 球门区域（SVG 绘制在 left:17 top:50%-55px，100×110）
+const GOAL_LEFT  = 17;
+const GOAL_TOP   = (FIELD_H - 110) / 2;
+const GOAL_RIGHT = GOAL_LEFT + 100;
+const GOAL_BOTTOM= GOAL_TOP  + 100; // 门框高度100
+
+/* =====================================================
+   初始化
+===================================================== */
+function startGame(){
+  document.getElementById('startMask').style.display = 'none';
+  updatePositions();
+  showTip('移动鼠标，对准球门后点击 射门键！');
+}
+
+/* =====================================================
+   鼠标移动 → 规则4：移动时球紧跟脚下
+===================================================== */
+const fieldEl = document.getElementById('field');
+
+document.addEventListener('mousemove', e => {
+  if(state !== STATE.READY) return;
+
+  const rect = fieldEl.getBoundingClientRect();
+  let mx = e.clientX - rect.left;
+  let my = e.clientY - rect.top;
+
+  // 限制在场地内（留边距）
+  mx = Math.max(30, Math.min(FIELD_W - 30, mx));
+  my = Math.max(30, Math.min(FIELD_H - 60, my));
+
+  px = mx; py = my;
+  bx = px; by = py + 12; // 球在脚下偏下一点
+
+  updatePositions();
+});
+
+function updatePositions(){
+  player.style.left = px + 'px';
+  player.style.top  = py + 'px';
+  ball.style.left   = bx + 'px';
+  ball.style.top    = by + 'px';
+
+  // 规则5：只要在场上就显示射门键
+  shootBtn.classList.remove('hidden');
+}
+
+/* =====================================================
+   规则5：点击射门键 → 球沿当前方向射出 3/4 场长
+===================================================== */
+function shoot(){
+  if(state !== STATE.READY) return;
+
+  state = STATE.FLYING;
+  shooting = true;
+  shootBtn.classList.add('hidden');
+  shotCnt++;
+  shotCount.textContent = shotCnt;
+
+  // 射门动画：腿踢
+  player.querySelector('.player-body').classList.add('kicking');
+  setTimeout(()=> player.querySelector('.player-body').classList.remove('kicking'), 350);
+
+  // 计算球的飞行目标（从球位置向左 3/4 场距离方向射出）
+  // 方向：从球员位置指向球门中心
+  const goalCX = GOAL_LEFT + 50;
+  const goalCY = FIELD_H / 2;
+  const dx = goalCX - bx;
+  const dy = goalCY - by;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const ux = dx / dist, uy = dy / dist;
+
+  const targetX = bx + ux * BALL_TRAVEL;
+  const targetY = by + uy * BALL_TRAVEL;
+
+  // 动画飞行
+  animateBall(bx, by, targetX, targetY, 800, () => {
+    checkGoal(targetX, targetY);
+  });
+}
+
+/* =====================================================
+   球飞行动画（含旋转 + 轨迹粒子）
+===================================================== */
+let rotation = 0;
+function animateBall(x0, y0, x1, y1, duration, onDone){
+  const startTime = performance.now();
+  const ballEl = document.getElementById('ball');
+
+  function step(now){
+    const t = Math.min((now - startTime) / duration, 1);
+    // easeOut
+    const ease = 1 - Math.pow(1 - t, 3);
+    const cx = x0 + (x1 - x0) * ease;
+    const cy = y0 + (y1 - y0) * ease;
+
+    ballEl.style.left = cx + 'px';
+    ballEl.style.top  = cy + 'px';
+
+    // 旋转
+    rotation += 8;
+    ballEl.querySelector('svg').style.transform = `rotate(${rotation}deg)`;
+
+    // 轨迹粒子（每隔一帧）
+    if(Math.round(t * 100) % 5 === 0) spawnTrail(cx, cy);
+
+    if(t < 1){ ballAnim = requestAnimationFrame(step); }
+    else{ onDone && onDone(); }
+  }
+  ballAnim = requestAnimationFrame(step);
+}
+
+function spawnTrail(x, y){
+  const tr = document.createElement('div');
+  tr.className = 'trail';
+  tr.style.left = (x - 4) + 'px';
+  tr.style.top  = (y - 4) + 'px';
+  fieldEl.appendChild(tr);
+  setTimeout(()=> tr.remove(), 400);
+}
+
+/* =====================================================
+   判断进球
+===================================================== */
+function checkGoal(tx, ty){
+  const inGoalX = tx <= GOAL_RIGHT + 20;
+  const inGoalY = ty >= GOAL_TOP && ty <= GOAL_BOTTOM;
+
+  if(inGoalX && inGoalY){
+    // 进球！
+    goalCnt++;
+    goalCount.textContent = goalCnt;
+    showGoalFx();
+    showTip('⚽ GOAL！精彩射门！5秒后重置');
+  } else {
+    showTip('😮 射偏了！5秒后重置...');
+  }
+
+  // 规则6：5秒后重置
+  state = STATE.RESET;
+  resetTimer = setTimeout(resetBall, 5000);
+}
+
+/* =====================================================
+   进球特效
+===================================================== */
+function showGoalFx(){
+  goalFx.classList.add('show');
+  setTimeout(()=> goalFx.classList.remove('show'), 1800);
+}
+
+/* =====================================================
+   规则6：5秒后球重置，射门键重现
+===================================================== */
+function resetBall(){
+  if(ballAnim) cancelAnimationFrame(ballAnim);
+
+  // 球重新贴回脚下
+  bx = px; by = py + 12;
+  const ballEl = document.getElementById('ball');
+  ballEl.style.left = bx + 'px';
+  ballEl.style.top  = by + 'px';
+  ballEl.querySelector('svg').style.transform = '';
+  rotation = 0;
+
+  state = STATE.READY;
+  shooting = false;
+  shootBtn.classList.remove('hidden');
+  showTip('移动鼠标，对准球门后点击 射门键！', 2500);
+}
+
+/* =====================================================
+   状态提示
+===================================================== */
+let tipTimer = null;
+function showTip(msg, duration = 0){
+  statusTip.textContent = msg;
+  statusTip.classList.remove('hide');
+  if(tipTimer) clearTimeout(tipTimer);
+  if(duration > 0){
+    tipTimer = setTimeout(()=> statusTip.classList.add('hide'), duration);
+  }
+}
+
+/* =====================================================
+   键盘快捷键：空格键也可以射门
+===================================================== */
+document.addEventListener('keydown', e=>{
+  if(e.code === 'Space' || e.code === 'KeyF'){
+    e.preventDefault();
+    shoot();
+  }
+});
+</script>
+</body>
+</html>
