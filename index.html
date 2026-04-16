@@ -117,147 +117,34 @@ body{
 .corner.tr{top:12px;right:12px;clip-path:polygon(0 0,0 100%,100% 100%);}
 .corner.br{bottom:12px;right:12px;clip-path:polygon(0 0,0 100%,100% 0);}
 
-/* ===== 玩家角色 ===== */
+/* ===== 玩家角色（俯视角4方向SVG）===== */
 #player{
   position:absolute;
-  width:48px;height:60px;
+  width:56px;height:56px;
   z-index:10;
   pointer-events:none;
   transform:translate(-50%,-50%);
-  transition:left .05s linear, top .05s linear;
 }
 
-/* 角色身体 CSS 绘制（梦幻西游风格小人）*/
-.player-body{
-  position:relative;width:100%;height:100%;
-}
-/* 头 */
-.p-head{
-  position:absolute;left:50%;top:0;transform:translateX(-50%);
-  width:22px;height:22px;border-radius:50%;
-  background:radial-gradient(circle at 40% 35%,#fde8c8,#e8c090);
-  border:1.5px solid #c0905a;
-  box-shadow:0 2px 4px rgba(0,0,0,0.3);
-}
-/* 头发 */
-.p-head::before{
-  content:'';position:absolute;
-  top:-4px;left:2px;right:2px;height:10px;
-  background:linear-gradient(135deg,#2a1a00,#5a3a10);
-  border-radius:50% 50% 0 0;
-}
-/* 眼睛 */
-.p-head::after{
-  content:'• •';position:absolute;
-  top:8px;left:0;right:0;
-  text-align:center;font-size:7px;color:#222;
-  letter-spacing:2px;line-height:1;
-}
-/* 身体（球衣）*/
-.p-torso{
-  position:absolute;left:50%;top:20px;transform:translateX(-50%);
-  width:26px;height:20px;
-  background:linear-gradient(180deg,#f0a020,#e08010);
-  border-radius:3px 3px 0 0;
-  border:1.5px solid #c06000;
-}
-/* 球衣号码 */
-.p-torso::after{
-  content:'7';position:absolute;
-  top:3px;left:50%;transform:translateX(-50%);
-  font-size:9px;font-weight:bold;color:#fff;
-  text-shadow:0 1px 2px rgba(0,0,0,0.5);
-}
-/* 左臂 */
-.p-arm-l{
-  position:absolute;left:5px;top:22px;
-  width:8px;height:16px;
-  background:linear-gradient(180deg,#f0a020,#e08010);
-  border-radius:4px;border:1px solid #c06000;
-  transform:rotate(15deg);transform-origin:top center;
-}
-/* 右臂 */
-.p-arm-r{
-  position:absolute;right:5px;top:22px;
-  width:8px;height:16px;
-  background:linear-gradient(180deg,#f0a020,#e08010);
-  border-radius:4px;border:1px solid #c06000;
-  transform:rotate(-15deg);transform-origin:top center;
-}
-/* 短裤 */
-.p-shorts{
-  position:absolute;left:50%;top:38px;transform:translateX(-50%);
-  width:24px;height:12px;
-  background:linear-gradient(180deg,#1a3a8a,#1228668);
-  border-radius:2px;
-  background:#1a3a8a;
-}
-/* 左腿 */
-.p-leg-l{
-  position:absolute;left:8px;top:48px;
-  width:9px;height:14px;
-  background:linear-gradient(180deg,#f5d5a0,#e0b870);
-  border-radius:3px;
-}
-/* 右腿（射门姿势偶尔抬起）*/
-.p-leg-r{
-  position:absolute;right:8px;top:48px;
-  width:9px;height:14px;
-  background:linear-gradient(180deg,#f5d5a0,#e0b870);
-  border-radius:3px;
-}
-/* 鞋 */
-.p-shoe-l{
-  position:absolute;left:6px;top:60px;
-  width:12px;height:5px;
-  background:#333;border-radius:2px;
-}
-.p-shoe-r{
-  position:absolute;right:6px;top:60px;
-  width:12px;height:5px;
-  background:#333;border-radius:2px;
-}
+/* 4个方向SVG，默认隐藏，JS控制显示 */
+.dir-svg{ display:none; position:absolute; top:0; left:0; }
+.dir-svg.active{ display:block; }
 
-/* ===== 跑步动画 ===== */
-@keyframes legL-run{
-  0%  {transform:rotate(-30deg);top:46px;}
-  50% {transform:rotate(25deg); top:50px;}
-  100%{transform:rotate(-30deg);top:46px;}
+/* 跑步时整体轻微上下抖动 */
+@keyframes run-bounce{
+  0%,100%{ transform:translateY(0); }
+  50%     { transform:translateY(-2px); }
 }
-@keyframes legR-run{
-  0%  {transform:rotate(25deg); top:50px;}
-  50% {transform:rotate(-30deg);top:46px;}
-  100%{transform:rotate(25deg); top:50px;}
-}
-@keyframes armL-run{
-  0%  {transform:rotate(30deg);}
-  50% {transform:rotate(-20deg);}
-  100%{transform:rotate(30deg);}
-}
-@keyframes armR-run{
-  0%  {transform:rotate(-20deg);}
-  50% {transform:rotate(30deg);}
-  100%{transform:rotate(-20deg);}
-}
-@keyframes torso-run{
-  0%  {transform:translateX(-50%) rotate(-3deg);}
-  50% {transform:translateX(-50%) rotate(3deg);}
-  100%{transform:translateX(-50%) rotate(-3deg);}
-}
-.running .p-leg-l { animation:legL-run .38s linear infinite; }
-.running .p-leg-r { animation:legR-run .38s linear infinite; }
-.running .p-arm-l { animation:armL-run .38s linear infinite; }
-.running .p-arm-r { animation:armR-run .38s linear infinite; }
-.running .p-torso  { animation:torso-run .38s linear infinite; }
+#player.running{ animation:run-bounce .28s linear infinite; }
 
-/* 射门动画 */
-@keyframes kick{
-  0%{transform:rotate(0deg);}
-  40%{transform:rotate(-55deg);}
-  70%{transform:rotate(25deg);}
-  100%{transform:rotate(0deg);}
+/* 射门踢球动画（朝左/右方向踢腿）*/
+@keyframes kick-anim{
+  0%  { transform:translateY(0); }
+  30% { transform:translateY(-4px) rotate(-4deg); }
+  60% { transform:translateY(2px)  rotate(3deg); }
+  100%{ transform:translateY(0); }
 }
-.kicking .p-leg-r{ animation:kick .35s ease-out; }
+#player.kicking{ animation:kick-anim .35s ease-out; }
 
 /* 点击目标光标 */
 .click-marker{
@@ -464,19 +351,106 @@ body{
     </svg>
   </div>
 
-  <!-- 玩家 -->
+  <!-- 玩家（俯视角4方向SVG）-->
   <div id="player">
-    <div class="player-body">
-      <div class="p-head"></div>
-      <div class="p-torso"></div>
-      <div class="p-arm-l"></div>
-      <div class="p-arm-r"></div>
-      <div class="p-shorts"></div>
-      <div class="p-leg-l"></div>
-      <div class="p-leg-r"></div>
-      <div class="p-shoe-l"></div>
-      <div class="p-shoe-r"></div>
-    </div>
+    <!-- 朝左 -->
+    <svg class="dir-svg active" id="dir-left" width="56" height="56" viewBox="0 0 56 56">
+      <!-- 阴影 -->
+      <ellipse cx="28" cy="50" rx="14" ry="4" fill="rgba(0,0,0,0.18)"/>
+      <!-- 后腿（静止帧A：后腿在后） -->
+      <rect class="leg-back" x="22" y="34" width="7" height="13" rx="3" fill="#e0b870"/>
+      <rect x="18" y="45" width="9" height="5" rx="2" fill="#222"/>
+      <!-- 身体 -->
+      <rect x="18" y="22" width="20" height="14" rx="4" fill="#f0a020" stroke="#c06000" stroke-width="1.2"/>
+      <!-- 号码7 -->
+      <text x="25" y="33" font-size="8" font-weight="bold" fill="#fff" text-anchor="middle" font-family="Arial">7</text>
+      <!-- 短裤 -->
+      <rect x="19" y="34" width="18" height="9" rx="3" fill="#1a3a8a"/>
+      <!-- 前臂（朝前伸） -->
+      <rect x="10" y="24" width="10" height="7" rx="3" fill="#f0a020" stroke="#c06000" stroke-width="1"/>
+      <!-- 后臂 -->
+      <rect x="36" y="24" width="8" height="6" rx="3" fill="#e08010" stroke="#c06000" stroke-width="1"/>
+      <!-- 前腿 -->
+      <rect class="leg-front" x="26" y="34" width="7" height="14" rx="3" fill="#f5d5a0"/>
+      <rect x="24" y="46" width="10" height="5" rx="2" fill="#222"/>
+      <!-- 头 -->
+      <circle cx="18" cy="16" r="11" fill="#fde8c8" stroke="#c0905a" stroke-width="1.5"/>
+      <!-- 头发 -->
+      <ellipse cx="18" cy="8" rx="9" ry="6" fill="#3a2000"/>
+      <!-- 眼睛 -->
+      <circle cx="13" cy="15" r="2" fill="#222"/>
+      <!-- 耳朵 -->
+      <ellipse cx="26" cy="17" rx="3" ry="4" fill="#e8c090" stroke="#c0905a" stroke-width="1"/>
+    </svg>
+
+    <!-- 朝右（朝左镜像）-->
+    <svg class="dir-svg" id="dir-right" width="56" height="56" viewBox="0 0 56 56" style="transform:scaleX(-1);transform-origin:28px 28px">
+      <ellipse cx="28" cy="50" rx="14" ry="4" fill="rgba(0,0,0,0.18)"/>
+      <rect class="leg-back" x="22" y="34" width="7" height="13" rx="3" fill="#e0b870"/>
+      <rect x="18" y="45" width="9" height="5" rx="2" fill="#222"/>
+      <rect x="18" y="22" width="20" height="14" rx="4" fill="#f0a020" stroke="#c06000" stroke-width="1.2"/>
+      <text x="25" y="33" font-size="8" font-weight="bold" fill="#fff" text-anchor="middle" font-family="Arial">7</text>
+      <rect x="19" y="34" width="18" height="9" rx="3" fill="#1a3a8a"/>
+      <rect x="10" y="24" width="10" height="7" rx="3" fill="#f0a020" stroke="#c06000" stroke-width="1"/>
+      <rect x="36" y="24" width="8" height="6" rx="3" fill="#e08010" stroke="#c06000" stroke-width="1"/>
+      <rect class="leg-front" x="26" y="34" width="7" height="14" rx="3" fill="#f5d5a0"/>
+      <rect x="24" y="46" width="10" height="5" rx="2" fill="#222"/>
+      <circle cx="18" cy="16" r="11" fill="#fde8c8" stroke="#c0905a" stroke-width="1.5"/>
+      <ellipse cx="18" cy="8" rx="9" ry="6" fill="#3a2000"/>
+      <circle cx="13" cy="15" r="2" fill="#222"/>
+      <ellipse cx="26" cy="17" rx="3" ry="4" fill="#e8c090" stroke="#c0905a" stroke-width="1"/>
+    </svg>
+
+    <!-- 朝下（正面）-->
+    <svg class="dir-svg" id="dir-down" width="56" height="56" viewBox="0 0 56 56">
+      <ellipse cx="28" cy="52" rx="14" ry="4" fill="rgba(0,0,0,0.18)"/>
+      <!-- 腿左 -->
+      <rect class="leg-back" x="20" y="36" width="7" height="14" rx="3" fill="#f5d5a0"/>
+      <rect x="18" y="47" width="10" height="5" rx="2" fill="#222"/>
+      <!-- 腿右 -->
+      <rect class="leg-front" x="29" y="36" width="7" height="14" rx="3" fill="#e0b870"/>
+      <rect x="28" y="47" width="10" height="5" rx="2" fill="#222"/>
+      <!-- 短裤 -->
+      <rect x="18" y="33" width="20" height="9" rx="3" fill="#1a3a8a"/>
+      <!-- 身体 -->
+      <rect x="17" y="20" width="22" height="15" rx="4" fill="#f0a020" stroke="#c06000" stroke-width="1.2"/>
+      <text x="28" y="32" font-size="8" font-weight="bold" fill="#fff" text-anchor="middle" font-family="Arial">7</text>
+      <!-- 左臂 -->
+      <rect x="8" y="22" width="10" height="7" rx="3" fill="#f0a020" stroke="#c06000" stroke-width="1" transform="rotate(-20,13,25)"/>
+      <!-- 右臂 -->
+      <rect x="38" y="22" width="10" height="7" rx="3" fill="#f0a020" stroke="#c06000" stroke-width="1" transform="rotate(20,43,25)"/>
+      <!-- 头 -->
+      <circle cx="28" cy="13" r="11" fill="#fde8c8" stroke="#c0905a" stroke-width="1.5"/>
+      <ellipse cx="28" cy="5" rx="9" ry="6" fill="#3a2000"/>
+      <!-- 眼睛 -->
+      <circle cx="23" cy="13" r="2" fill="#222"/>
+      <circle cx="33" cy="13" r="2" fill="#222"/>
+    </svg>
+
+    <!-- 朝上（背面）-->
+    <svg class="dir-svg" id="dir-up" width="56" height="56" viewBox="0 0 56 56">
+      <ellipse cx="28" cy="52" rx="14" ry="4" fill="rgba(0,0,0,0.18)"/>
+      <!-- 腿左 -->
+      <rect class="leg-back" x="20" y="36" width="7" height="14" rx="3" fill="#f5d5a0"/>
+      <rect x="18" y="47" width="10" height="5" rx="2" fill="#222"/>
+      <!-- 腿右 -->
+      <rect class="leg-front" x="29" y="36" width="7" height="14" rx="3" fill="#e0b870"/>
+      <rect x="28" y="47" width="10" height="5" rx="2" fill="#222"/>
+      <!-- 短裤 -->
+      <rect x="18" y="33" width="20" height="9" rx="3" fill="#1a3a8a"/>
+      <!-- 身体背面 -->
+      <rect x="17" y="20" width="22" height="15" rx="4" fill="#d08010" stroke="#c06000" stroke-width="1.2"/>
+      <!-- 背部条纹 -->
+      <rect x="22" y="22" width="12" height="3" rx="1" fill="rgba(255,255,255,0.3)"/>
+      <!-- 左臂 -->
+      <rect x="8" y="22" width="10" height="7" rx="3" fill="#d08010" stroke="#c06000" stroke-width="1" transform="rotate(20,13,25)"/>
+      <!-- 右臂 -->
+      <rect x="38" y="22" width="10" height="7" rx="3" fill="#d08010" stroke="#c06000" stroke-width="1" transform="rotate(-20,43,25)"/>
+      <!-- 头（背面）-->
+      <circle cx="28" cy="13" r="11" fill="#fde8c8" stroke="#c0905a" stroke-width="1.5"/>
+      <!-- 头发（背面看更多头发）-->
+      <ellipse cx="28" cy="9" rx="9" ry="8" fill="#3a2000"/>
+    </svg>
   </div>
 
   <!-- 足球 -->
@@ -533,15 +507,16 @@ const goalFx   = document.getElementById('goalFx');
 const goalCount= document.getElementById('goalCount');
 const shotCount= document.getElementById('shotCount');
 const fieldEl  = document.getElementById('field');
-const playerBody = () => player.querySelector('.player-body');
+// playerBody已废弃，改为直接操作 #player
 
 // 球员当前位置
 let px = FIELD_W * 0.65, py = FIELD_H * 0.55;
 
-// 朝向角度（CSS rotate deg）：角色默认头朝上
-// 0=头朝上(朝屏幕上方), 90=头朝右, 180=头朝下, 270=头朝左
-// 初始朝向：角色在右侧，球门在左侧 → 头朝左 → 270度
-let facing = 270;
+// 朝向：'left'|'right'|'up'|'down'，初始朝向球门（朝左）
+let facing = 'left';
+// 跑步腿部帧切换计时器
+let legFrame = 0;
+let legTimer = null;
 
 // 移动目标
 let targetX = px, targetY = py;
@@ -584,8 +559,11 @@ function syncBallToFeet(){
 function renderPlayer(){
   player.style.left = px + 'px';
   player.style.top  = py + 'px';
-  // 朝向：旋转整个角色，translate(-50%,-50%) 保持锚点在中心
-  player.style.transform = `translate(-50%,-50%) rotate(${facing}deg)`;
+  player.style.transform = 'translate(-50%,-50%)';
+  // 切换方向SVG
+  ['left','right','up','down'].forEach(d => {
+    document.getElementById('dir-'+d).classList.toggle('active', d === facing);
+  });
 }
 
 /* =====================================================
@@ -617,17 +595,24 @@ fieldEl.addEventListener('click', e => {
    行走动画循环（f2 球始终跟脚，f3 跑步动画）
 ===================================================== */
 function startWalking(){
-  if(isWalking) return; // 已经在走，只更新目标即可
+  if(isWalking) return;
   isWalking = true;
   lastTime = null;
-  playerBody().classList.add('running');
+  player.classList.add('running');
+  // 腿部帧动画：每180ms切换一次腿部高低
+  legFrame = 0;
+  if(legTimer) clearInterval(legTimer);
+  legTimer = setInterval(toggleLegFrame, 180);
   walkAnim = requestAnimationFrame(walkStep);
 }
 
 function stopWalking(){
   isWalking = false;
-  playerBody().classList.remove('running');
+  player.classList.remove('running');
   if(walkAnim){ cancelAnimationFrame(walkAnim); walkAnim = null; }
+  if(legTimer){ clearInterval(legTimer); legTimer = null; }
+  // 重置腿部到静止帧
+  resetLegFrames();
 }
 
 function walkStep(now){
@@ -648,8 +633,12 @@ function walkStep(now){
     return;
   }
 
-  // 更新朝向（移动方向的角度：atan2(dy,dx) 转度数，再+90因为角色默认朝上）
-  facing = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+  // 更新朝向：根据主导移动方向决定4方向
+  const newFacing = calcFacing(dx, dy);
+  if(newFacing !== facing){
+    facing = newFacing;
+    renderPlayer();
+  }
 
   // 按速度推进
   const step = Math.min(WALK_SPEED * dt, dist);
@@ -661,6 +650,52 @@ function walkStep(now){
   renderPlayer();
 
   walkAnim = requestAnimationFrame(walkStep);
+}
+
+/* =====================================================
+   朝向辅助函数
+===================================================== */
+// dx,dy → 'left'|'right'|'up'|'down'（取绝对值大的轴决定主方向）
+function calcFacing(dx, dy){
+  if(Math.abs(dx) >= Math.abs(dy)){
+    return dx < 0 ? 'left' : 'right';
+  } else {
+    return dy < 0 ? 'up' : 'down';
+  }
+}
+
+// facing字符串 → 单位向量
+function facingToVector(f){
+  return { left:{x:-1,y:0}, right:{x:1,y:0}, up:{x:0,y:-1}, down:{x:0,y:1} }[f];
+}
+
+// 腿部帧交替（跑步动画：前后腿互换位置）
+function toggleLegFrame(){
+  legFrame = 1 - legFrame;
+  // 在当前active的SVG里切换腿部长短
+  const svg = document.querySelector('.dir-svg.active');
+  if(!svg) return;
+  const legB = svg.querySelector('.leg-back');
+  const legF = svg.querySelector('.leg-front');
+  if(!legB || !legF) return;
+  if(legFrame === 0){
+    // 帧A：后腿缩短，前腿伸长
+    legB.setAttribute('height','10');
+    legF.setAttribute('height','14');
+  } else {
+    // 帧B：后腿伸长，前腿缩短（交叉步）
+    legB.setAttribute('height','14');
+    legF.setAttribute('height','10');
+  }
+}
+
+function resetLegFrames(){
+  document.querySelectorAll('.dir-svg').forEach(svg => {
+    const legB = svg.querySelector('.leg-back');
+    const legF = svg.querySelector('.leg-front');
+    if(legB) legB.setAttribute('height', svg.id==='dir-left'||svg.id==='dir-right' ? '13':'14');
+    if(legF) legF.setAttribute('height', svg.id==='dir-left'||svg.id==='dir-right' ? '14':'14');
+  });
 }
 
 /* =====================================================
@@ -689,16 +724,14 @@ function shoot(){
   shotCount.textContent = shotCnt;
 
   // 射门踢腿动画
-  const pb = playerBody();
-  pb.classList.remove('running');
-  pb.classList.add('kicking');
-  setTimeout(()=> pb.classList.remove('kicking'), 380);
+  player.classList.remove('running');
+  player.classList.add('kicking');
+  setTimeout(()=> player.classList.remove('kicking'), 380);
 
-  // 方向：按人物当前朝向射出（facing 角度，+90修正使0度=朝上→换回笛卡尔）
+  // 方向：按人物当前朝向射出（4方向转单位向量）
   const bx = px, by = py + 14;
-  const rad = (facing - 90) * (Math.PI / 180);
-  const ux = Math.cos(rad);
-  const uy = Math.sin(rad);
+  const fvec = facingToVector(facing);
+  const ux = fvec.x, uy = fvec.y;
 
   const endX = bx + ux * BALL_TRAVEL;
   const endY = by + uy * BALL_TRAVEL;
