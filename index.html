@@ -538,6 +538,11 @@ const playerBody = () => player.querySelector('.player-body');
 // 球员当前位置
 let px = FIELD_W * 0.65, py = FIELD_H * 0.55;
 
+// 朝向角度（CSS rotate deg）：角色默认头朝上
+// 0=头朝上(朝屏幕上方), 90=头朝右, 180=头朝下, 270=头朝左
+// 初始朝向：角色在右侧，球门在左侧 → 头朝左 → 270度
+let facing = 270;
+
 // 移动目标
 let targetX = px, targetY = py;
 let isWalking = false;
@@ -579,6 +584,8 @@ function syncBallToFeet(){
 function renderPlayer(){
   player.style.left = px + 'px';
   player.style.top  = py + 'px';
+  // 朝向：旋转整个角色，translate(-50%,-50%) 保持锚点在中心
+  player.style.transform = `translate(-50%,-50%) rotate(${facing}deg)`;
 }
 
 /* =====================================================
@@ -641,6 +648,9 @@ function walkStep(now){
     return;
   }
 
+  // 更新朝向（移动方向的角度：atan2(dy,dx) 转度数，再+90因为角色默认朝上）
+  facing = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+
   // 按速度推进
   const step = Math.min(WALK_SPEED * dt, dist);
   px += (dx / dist) * step;
@@ -684,14 +694,11 @@ function shoot(){
   pb.classList.add('kicking');
   setTimeout(()=> pb.classList.remove('kicking'), 380);
 
-  // 方向：球员 → 球门中心
-  const goalCX = GOAL_LEFT + 50;
-  const goalCY = FIELD_H / 2;
+  // 方向：按人物当前朝向射出（facing 角度，+90修正使0度=朝上→换回笛卡尔）
   const bx = px, by = py + 14;
-  const dx = goalCX - bx;
-  const dy = goalCY - by;
-  const dist = Math.sqrt(dx*dx + dy*dy);
-  const ux = dx / dist, uy = dy / dist;
+  const rad = (facing - 90) * (Math.PI / 180);
+  const ux = Math.cos(rad);
+  const uy = Math.sin(rad);
 
   const endX = bx + ux * BALL_TRAVEL;
   const endY = by + uy * BALL_TRAVEL;
