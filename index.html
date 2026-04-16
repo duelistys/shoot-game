@@ -497,7 +497,7 @@ body{
 ===================================================== */
 const FIELD_W = 700, FIELD_H = 520;
 const BALL_TRAVEL = FIELD_W * 0.75;   // 规则5：3/4 场长
-const WALK_SPEED  = 280;              // 像素/秒
+const WALK_SPEED  = 140;              // 像素/秒（减半）
 
 const player   = document.getElementById('player');
 const ball     = document.getElementById('ball');
@@ -549,11 +549,20 @@ function startGame(){
 }
 
 /* =====================================================
-   同步球到脚下（始终贴脚）
+   同步球到脚下（按朝向偏移到前方脚下）
 ===================================================== */
 function syncBallToFeet(){
-  ball.style.left = px + 'px';
-  ball.style.top  = (py + 14) + 'px'; // 球在脚底稍下
+  // 根据朝向，将球放在角色前方脚下偏移位置
+  const BALL_OFFSET = 18; // 球在朝向前方的偏移距离
+  const offsets = {
+    left:  { x: -BALL_OFFSET, y: 10 },
+    right: { x:  BALL_OFFSET, y: 10 },
+    up:    { x: 0,            y: -BALL_OFFSET },
+    down:  { x: 0,            y:  BALL_OFFSET }
+  };
+  const off = offsets[facing] || { x: 0, y: 14 };
+  ball.style.left = (px + off.x) + 'px';
+  ball.style.top  = (py + off.y) + 'px';
 }
 
 function renderPlayer(){
@@ -638,6 +647,7 @@ function walkStep(now){
   if(newFacing !== facing){
     facing = newFacing;
     renderPlayer();
+    syncBallToFeet(); // 转向时球瞬移到新朝向前方脚下
   }
 
   // 按速度推进
